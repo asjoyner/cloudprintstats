@@ -2,12 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/asjoyner/googoauth"
 )
@@ -19,10 +22,27 @@ var (
 	JobsPage     = "https://www.google.com/cloudprint/jobs"
 )
 
-func GetPrinterUsage() (map[string]int, error) {
-	// get oauth credentials
-	client := googoauth.Client(clientID, clientSecret, clientScopes)
+var (
+	lastDuration = flag.Duration("last", 0, "Limit to print jobs in the last <period>.  0 shows all jobs.")
+	printerId    = flag.String("printerId", "", "Limit to print jobs from a specific printer.  An empty string will show jobs printed to all printers the authenticated user has access to.")
+)
 
+type Job struct {
+	ID            string
+	Title         string
+	OwnerID       string
+	NumberOfPages int
+	CreateTime    string
+	ContentType   string
+	PrinterName   string
+	SemanticState struct {
+		State struct {
+			Type string
+		}
+	}
+}
+
+func GetPrinterUsage(client *http.Client) (map[string]int, error) {
 	// map of username to number of pages printed
 	usage := make(map[string]int)
 
@@ -36,43 +56,31 @@ func GetPrinterUsage() (map[string]int, error) {
 		form.Set("status", "DONE")
 		form.Set("limit", fmt.Sprintf("%d", limit))   // number of jobs per page
 		form.Set("offset", fmt.Sprintf("%d", offset)) // zero-ordered
-		// TODO: optionally set the printerid from a flag to restrict the output
-		form.Set("printerid", "")
+		if *printerId != "" {
+			form.Set("printerid", *printerId)
+		}
 
 		response, err := client.PostForm(JobsPage, form)
 		if err != nil {
 			return nil, fmt.Errorf("Could not retrieve the list of print jobs: %s", err)
 		}
+		if response.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("Error retrieving the list of print jobs: %s", response.Status)
+		}
 
 		// decode JSON response into struct
 		var jobsResponse struct {
-			Jobs []struct {
-				ID            string
-				Title         string
-				OwnerID       string
-				NumberOfPages int
-				CreateTime    string
-				ContentType   string
-				PrinterName   string
-				SemanticState struct {
-					State struct {
-						Type string
-					}
-				}
-			}
+			Jobs  []Job
 			Range struct {
 				JobsTotal string
 				JobsCount int
 			}
 		}
-		json.NewDecoder(response.Body).Decode(&jobsResponse)
-
-		// process statistics
-		for _, job := range jobsResponse.Jobs {
-			if job.SemanticState.State.Type == "DONE" {
-				usage[strings.ToLower(job.OwnerID)] += job.NumberOfPages
-			}
+		if err := json.NewDecoder(response.Body).Decode(&jobsResponse); err != nil {
+			return nil, fmt.Errorf("could not decode Jobs page response: %s", err)
 		}
+
+		summarize(usage, jobsResponse.Jobs)
 
 		offset += limit
 		total, err := strconv.Atoi(jobsResponse.Range.JobsTotal)
@@ -93,8 +101,40 @@ func GetPrinterUsage() (map[string]int, error) {
 	return usage, nil
 }
 
+// process statistics
+func summarize(usage map[string]int, jobs []Job) {
+	threshold := time.Now().Add(-*lastDuration)
+	for _, job := range jobs {
+		if *lastDuration != 0 {
+			ctimeInt, err := strconv.Atoi(job.CreateTime)
+			if err != nil {
+				continue
+			}
+			ctime := time.Unix(int64(ctimeInt), 0)
+			if ctime.Before(threshold) {
+				continue
+			}
+		}
+
+		if job.SemanticState.State.Type == "DONE" {
+			usage[strings.ToLower(job.OwnerID)] += job.NumberOfPages
+		}
+	}
+}
+
 func main() {
-	usage, err := GetPrinterUsage()
+	flag.Parse()
+
+	// get oauth credentials
+	client := googoauth.Client(clientID, clientSecret, clientScopes)
+
+	usage, err := GetPrinterUsage(client)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// print the usage in a sorted order
 	var sortedUsernames []string
 	for username := range usage {
 		sortedUsernames = append(sortedUsernames, username)
@@ -105,8 +145,4 @@ func main() {
 	for _, username := range sortedUsernames {
 		fmt.Println(" ", username, ":", usage[username])
 	}
-	if err != nil {
-		os.Exit(1)
-	}
-	os.Exit(0)
 }

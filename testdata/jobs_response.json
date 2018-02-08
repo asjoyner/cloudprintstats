@@ -1,0 +1,106 @@
+{
+ "success": true,
+ "request": {
+  "time": "0",
+  "params": {
+   "owner": [
+    ""
+   ],
+   "q": [
+    ""
+   ],
+   "offset": [
+    "0"
+   ],
+   "limit": [
+    "100"
+   ],
+   "printerid": [
+    ""
+   ],
+   "sortorder": [
+    ""
+   ],
+   "status": [
+    "DONE"
+   ]
+  },
+  "user": "cloudprint@example.com",
+  "users": [
+   "cloudprint@example.com"
+  ]
+ },
+ "xsrf_token": "abc:123",
+ "jobs": [
+  {
+   "ticketUrl": "https://www.google.com/cloudprint/ticket?jobid\u003dc75-b-a-6-cf",
+   "printerType": "GOOGLE",
+   "printerName": "SHARP MX-5141NPCL_PS",
+   "errorCode": "",
+   "updateTime": "1517411340584",
+   "title": "The Most Interesting Title in the World",
+   "message": "",
+   "ownerId": "alice@example.com",
+   "tags": [
+    "^shared",
+    "__google__chrome_version\u003d63.0.3239.140",
+    "__google__os\u003dLinux x86_64"
+   ],
+   "uiState": {
+    "summary": "DONE"
+   },
+   "numberOfPages": 1,
+   "createTime": "1517411327475",
+   "semanticState": {
+    "delivery_attempts": 1,
+    "state": {
+     "type": "DONE"
+    },
+    "version": "1.0"
+   },
+   "printerid": "67000000-2000-3000-c000-be0000000000",
+   "fileUrl": "https://www.google.com/cloudprint/download?id\u003dc7000000-b300-a400-6000-cf0000000000",
+   "id": "c756c2cd-b3e4-a45d-6833-cf00a259c3bb",
+   "rasterUrl": "https://www.google.com/cloudprint/download?id\u003dc7000000-b300-a400-6000-cf0000000000\u0026forcepwg\u003d1",
+   "contentType": "application/pdf",
+   "status": "DONE"
+  },
+  {
+   "ticketUrl": "https://www.google.com/cloudprint/ticket?jobid\u003dc75-b-a-6-cf",
+   "printerType": "GOOGLE",
+   "printerName": "SHARP MX-5141NPCL_PS",
+   "errorCode": "",
+   "updateTime": "1517411340584",
+   "title": "The Most Interesting Title in the World",
+   "message": "",
+   "ownerId": "bob@example.com",
+   "tags": [
+    "^shared",
+    "__google__chrome_version\u003d63.0.3239.140",
+    "__google__os\u003dLinux x86_64"
+   ],
+   "uiState": {
+    "summary": "DONE"
+   },
+   "numberOfPages": 7,
+   "createTime": "1517411327475",
+   "semanticState": {
+    "delivery_attempts": 1,
+    "state": {
+     "type": "DONE"
+    },
+    "version": "1.0"
+   },
+   "printerid": "67000000-2000-3000-c000-be0000000000",
+   "fileUrl": "https://www.google.com/cloudprint/download?id\u003dc7000000-b300-a400-6000-cf0000000000",
+   "id": "c756c2cd-b3e4-a45d-6833-cf00a259c3bb",
+   "rasterUrl": "https://www.google.com/cloudprint/download?id\u003dc7000000-b300-a400-6000-cf0000000000\u0026forcepwg\u003d1",
+   "contentType": "application/pdf",
+   "status": "DONE"
+  }
+ ],
+ "range": {
+  "jobsTotal": "2",
+  "jobsCount": 2
+ }
+}
