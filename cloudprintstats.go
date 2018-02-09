@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,14 +36,18 @@ type Job struct {
 	CreateTime    string
 	ContentType   string
 	PrinterName   string
-	SemanticState struct {
-		State struct {
-			Type string
-		}
-	}
+	SemanticState SemanticState
 }
 
-func GetPrinterUsage(client *http.Client) (map[string]int, error) {
+type SemanticState struct {
+	State State
+}
+
+type State struct {
+	Type string
+}
+
+func GetPrinterUsage(client *http.Client, printerId string, after, before int64) (map[string]int, error) {
 	// map of username to number of pages printed
 	usage := make(map[string]int)
 
@@ -56,8 +61,8 @@ func GetPrinterUsage(client *http.Client) (map[string]int, error) {
 		form.Set("status", "DONE")
 		form.Set("limit", fmt.Sprintf("%d", limit))   // number of jobs per page
 		form.Set("offset", fmt.Sprintf("%d", offset)) // zero-ordered
-		if *printerId != "" {
-			form.Set("printerid", *printerId)
+		if printerId != "" {
+			form.Set("printerid", printerId)
 		}
 
 		response, err := client.PostForm(JobsPage, form)
@@ -80,7 +85,7 @@ func GetPrinterUsage(client *http.Client) (map[string]int, error) {
 			return nil, fmt.Errorf("could not decode Jobs page response: %s", err)
 		}
 
-		summarize(usage, jobsResponse.Jobs)
+		summarize(usage, jobsResponse.Jobs, after, before)
 
 		offset += limit
 		total, err := strconv.Atoi(jobsResponse.Range.JobsTotal)
@@ -102,18 +107,14 @@ func GetPrinterUsage(client *http.Client) (map[string]int, error) {
 }
 
 // process statistics
-func summarize(usage map[string]int, jobs []Job) {
-	threshold := time.Now().Add(-*lastDuration)
+func summarize(usage map[string]int, jobs []Job, after, before int64) {
 	for _, job := range jobs {
-		if *lastDuration != 0 {
-			ctimeInt, err := strconv.Atoi(job.CreateTime)
-			if err != nil {
-				continue
-			}
-			ctime := time.Unix(int64(ctimeInt), 0)
-			if ctime.Before(threshold) {
-				continue
-			}
+		ctime, err := strconv.ParseInt(job.CreateTime, 10, 64)
+		if err != nil {
+			continue
+		}
+		if ctime < after || ctime > before {
+			continue
 		}
 
 		if job.SemanticState.State.Type == "DONE" {
@@ -125,10 +126,13 @@ func summarize(usage map[string]int, jobs []Job) {
 func main() {
 	flag.Parse()
 
+	after := time.Now().Add(-*lastDuration).Unix()
+	before := int64(math.MaxInt64)
+
 	// get oauth credentials
 	client := googoauth.Client(clientID, clientSecret, clientScopes)
 
-	usage, err := GetPrinterUsage(client)
+	usage, err := GetPrinterUsage(client, *printerId, after, before)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
